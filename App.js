@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import { Button, FlatList, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import ErrorBoundary from 'react-native-error-boundary';
 import RNRestart from 'react-native-restart';
@@ -15,58 +15,93 @@ const MyFallbackComponent = (error, resetError) => (
     </View>
 );
 
+// Memoized input component to avoid re-rendering unless props change
+const TextUIComponent = memo(({ label, placeholder, keyValue, value, onChange }) => (
+    <View>
+        <Text style={{ marginLeft: 16 }}>{label}</Text>
+        <TextInput
+            value={value}
+            onChangeText={(v) => onChange(keyValue, v)}
+            style={styles.textInputStyle}
+            placeholder={placeholder}
+        />
+    </View>
+));
+
 const App = () => {
-    const [firstName, setFirstName] = useState(null);
-    const [lastName, setLastName] = useState(null);
-    const [age, setAge] = useState(null);
-    const [goal, setGoal] = useState(null);
-    const [student, setStudent] = useState(null);
+    const [formData, setFormData] = useState({});
     const [listData, setListData] = useState([]);
-    // Trigger error during render
-    const renderItem = ({ item }) => {
-        let { firstName, lastName, age, student, goal } = item;
+
+    const handleInputChange = (key, value) => {
+        setFormData((prev) => ({ ...prev, [key]: value }));
+    };
+
+    const handleSubmit = () => {
+        setListData((prev) => [...prev, formData]);
+    };
+
+    const renderItem = useCallback(({ item }) => {
+        const { firstName, lastName, age, student, goal } = item;
 
         return (
-            <View style={{ flexDirection: 'row' }}>
+            <View style={styles.userListViewContainerStyle}>
                 <Text style={styles.textStyleViewShowingItems}>{firstName}</Text>
                 <Text style={styles.textStyleViewShowingItems}>{lastName}</Text>
                 <Text style={styles.textStyleViewShowingItems}>{age}</Text>
                 <Text style={styles.textStyleViewShowingItems}>{student}</Text>
-                <Text style={styles.textStyleViewShowingItems}>{goal.trim()}</Text>
+                <Text style={styles.textStyleViewShowingItems}>{goal?.trim()}</Text>
             </View>
         );
-    };
+    }, []);
 
     return (
         <ErrorBoundary FallbackComponent={MyFallbackComponent}>
             <ScrollView style={styles.containerStyle}>
-                <Text style={{ marginLeft: 16 }}>First name</Text>
-                <TextInput onChangeText={setFirstName} style={styles.textInputStyle} placeholder="Enter First Name" />
-                <Text style={{ marginLeft: 16 }}>Last name</Text>
-                <TextInput onChangeText={setLastName} style={styles.textInputStyle} placeholder="Enter Last Name" />
-                <Text style={{ marginLeft: 16 }}>Age</Text>
-                <TextInput onChangeText={setAge} style={styles.textInputStyle} placeholder="your age" />
-                <Text style={{ marginLeft: 16 }}>Are you a student?</Text>
-                <TextInput onChangeText={setStudent} style={styles.textInputStyle} placeholder="" />
-                <Text style={{ marginLeft: 16 }}>what's your goal</Text>
-                <TextInput onChangeText={setGoal} style={styles.textInputStyle} placeholder="Life Goal" />
+                <TextUIComponent
+                    label={'First name'}
+                    placeholder={'Enter First Name'}
+                    keyValue={'firstName'}
+                    value={formData.firstName || ''}
+                    onChange={handleInputChange}
+                />
+                <TextUIComponent
+                    label={'Last name'}
+                    placeholder={'Enter Last Name'}
+                    keyValue={'lastName'}
+                    value={formData.lastName || ''}
+                    onChange={handleInputChange}
+                />
+                <TextUIComponent
+                    label={'Age'}
+                    placeholder={'your age'}
+                    keyValue={'age'}
+                    value={formData.age || ''}
+                    onChange={handleInputChange}
+                />
+                <TextUIComponent
+                    label={'Are you a student?'}
+                    placeholder={'yes or no'}
+                    keyValue={'student'}
+                    value={formData.student || ''}
+                    onChange={handleInputChange}
+                />
+                <TextUIComponent
+                    label={'your goal'}
+                    placeholder={'your goal'}
+                    keyValue={'goal'}
+                    value={formData.goal || ''}
+                    onChange={handleInputChange}
+                />
+
                 <View style={{ marginTop: 10, marginHorizontal: 16 }}>
-                    <Button
-                        color={'blue'}
-                        onPress={() => {
-                            if (firstName && lastName && age) {
-                                setListData([...listData, { firstName, lastName, student, goal, age }]);
-                            }
-                            setGoal(null);
-                            setFirstName(null);
-                            setLastName(null);
-                            setStudent(null);
-                            setAge(null);
-                        }}
-                        title="Submit"
-                    />
+                    <Button color={'blue'} onPress={handleSubmit} title="Submit" />
                 </View>
-                <FlatList data={listData} renderItem={renderItem} />
+
+                <FlatList
+                    data={listData}
+                    renderItem={renderItem}
+                    keyExtractor={(_, index) => index.toString()}
+                />
             </ScrollView>
         </ErrorBoundary>
     );
@@ -83,6 +118,9 @@ const styles = StyleSheet.create({
         borderColor: 'grey',
     }, textStyleViewShowingItems: {
         marginLeft: 10,
+    }, userListViewContainerStyle: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
     },
 });
 
